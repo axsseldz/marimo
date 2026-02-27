@@ -996,7 +996,8 @@ def _extract_histogram_points_numpy(
             )
         else:
             category_positions = {
-                value: idx for idx, value in enumerate(dict.fromkeys(axis_data))
+                value: idx
+                for idx, value in enumerate(dict.fromkeys(axis_data))
             }
             position_arr = np.asarray(
                 [category_positions[value] for value in axis_data]
@@ -1045,7 +1046,9 @@ def _extract_histogram_points_fallback(
         for point_idx, axis_value in enumerate(axis_data):
             axis_in_range = False
 
-            if _is_orderable_value(axis_value) and _is_orderable_value(axis_min):
+            if _is_orderable_value(axis_value) and _is_orderable_value(
+                axis_min
+            ):
                 axis_min_p = _parse_datetime_bound(axis_min)
                 axis_max_p = _parse_datetime_bound(axis_max)
                 axis_in_range = axis_min_p <= axis_value <= axis_max_p
@@ -1053,10 +1056,14 @@ def _extract_histogram_points_fallback(
                 position = category_positions[axis_value]
                 bin_min = position - 0.5
                 bin_max = position + 0.5
-                axis_in_range = not (axis_max <= bin_min or axis_min >= bin_max)
+                axis_in_range = not (
+                    axis_max <= bin_min or axis_min >= bin_max
+                )
 
             if axis_in_range:
-                point = _build_histogram_sample_point(trace, trace_idx, point_idx)
+                point = _build_histogram_sample_point(
+                    trace, trace_idx, point_idx
+                )
                 if point is not None:
                     selected_points.append(point)
 
@@ -1127,7 +1134,9 @@ def _build_histogram_sample_point(
     if name:
         point["name"] = name
 
-    customdata = _get_indexed_value(getattr(trace, "customdata", None), point_idx)
+    customdata = _get_indexed_value(
+        getattr(trace, "customdata", None), point_idx
+    )
     if customdata is not None:
         point["customdata"] = customdata
 
@@ -1135,7 +1144,9 @@ def _build_histogram_sample_point(
     if text is not None:
         point["text"] = text
 
-    hovertext = _get_indexed_value(getattr(trace, "hovertext", None), point_idx)
+    hovertext = _get_indexed_value(
+        getattr(trace, "hovertext", None), point_idx
+    )
     if hovertext is not None:
         point["hovertext"] = hovertext
 
