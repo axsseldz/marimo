@@ -14,7 +14,11 @@ import useEvent from "react-use-event-hook";
 import { useDeepCompareMemoize } from "@/hooks/useDeepCompareMemoize";
 import { useScript } from "@/hooks/useScript";
 import { Arrays } from "@/utils/arrays";
-import { createParser, type PlotlyTemplateParser } from "./parse-from-template";
+import {
+  extractClickSelection,
+  extractIndices,
+  extractPoints,
+} from "./selection";
 import { usePlotlyLayout } from "./usePlotlyLayout";
 
 interface Data {
@@ -22,12 +26,9 @@ interface Data {
   config: Partial<Plotly.Config>;
 }
 
-type AxisName = string;
-type AxisDatum = unknown;
-
 type T =
   | {
-      points?: Record<AxisName, AxisDatum>[] | Plotly.PlotDatum[];
+      points?: Record<string, unknown>[] | Plotly.PlotDatum[];
       indices?: number[];
       range?: {
         x?: number[];
@@ -197,19 +198,13 @@ export const PlotlyComponent = memo(
           if (!evt) {
             return;
           }
-          // Only handle clicks for chart types where box/lasso selection
-          // (onSelected) doesn't work, such as heatmaps.
-          const isHeatmap = evt.points.some(
-            (point) => point.data?.type === "heatmap",
-          );
-          if (!isHeatmap) {
+
+          const clickSelection = extractClickSelection(evt);
+          if (!clickSelection) {
             return;
           }
-          setValue((prev) => ({
-            ...prev,
-            points: extractPoints(evt.points),
-            indices: evt.points.map((point) => point.pointIndex),
-          }));
+
+          setValue((prev) => ({ ...prev, ...clickSelection }));
         })}
         onSelected={useEvent((evt: Readonly<Plotly.PlotSelectionEvent>) => {
           if (!evt) {
@@ -221,7 +216,7 @@ export const PlotlyComponent = memo(
             selections:
               "selections" in evt ? (evt.selections as unknown[]) : [],
             points: extractPoints(evt.points),
-            indices: evt.points.map((point) => point.pointIndex),
+            indices: extractIndices(evt.points),
             range: evt.range,
           }));
         })}
@@ -236,54 +231,3 @@ export const PlotlyComponent = memo(
   },
 );
 PlotlyComponent.displayName = "PlotlyComponent";
-
-/**
- * This is a hack to extract the points with their original keys,
- * instead of the ones that Plotly uses internally,
- * by using the hovertemplate.
- */
-const STANDARD_POINT_KEYS: string[] = [
-  "x",
-  "y",
-  "z",
-  "lat",
-  "lon",
-  "curveNumber",
-  "pointNumber",
-  "pointNumbers",
-  "pointIndex",
-];
-
-function extractPoints(
-  points: Plotly.PlotDatum[],
-): Record<AxisName, AxisDatum>[] {
-  if (!points) {
-    return [];
-  }
-
-  let parser: PlotlyTemplateParser | undefined;
-
-  return points.map((point) => {
-    const standardPointFields = pick(point, STANDARD_POINT_KEYS);
-
-    // Get the first hovertemplate
-    const hovertemplate = Array.isArray(point.data.hovertemplate)
-      ? point.data.hovertemplate[0]
-      : point.data.hovertemplate;
-
-    // For chart types with standard point keys (e.g. heatmaps),
-    // or when there's no hovertemplate, pick keys directly from the point.
-    if (!hovertemplate || point.data?.type === "heatmap") {
-      return standardPointFields;
-    }
-
-    // Update or create a parser
-    parser = parser
-      ? parser.update(hovertemplate)
-      : createParser(hovertemplate);
-    return {
-      ...standardPointFields,
-      ...parser.parse(point),
-    };
-  });
-}
